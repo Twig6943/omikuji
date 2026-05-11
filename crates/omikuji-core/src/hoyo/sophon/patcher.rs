@@ -44,6 +44,7 @@ pub struct ProgressReport {
     pub total: u64,
     pub bytes_done: u64,
     pub bytes_total: u64,
+    pub bytes_session: u64,
 }
 
 pub type ProgressFn = Arc<dyn Fn(ProgressReport) + Send + Sync + 'static>;
@@ -306,6 +307,7 @@ async fn download_artifact(
                 total: 0,
                 bytes_done: bytes_done.load(Ordering::SeqCst),
                 bytes_total,
+                bytes_session: 0,
             });
             return Ok(());
         }
@@ -323,6 +325,7 @@ async fn download_artifact(
                     total: 0,
                     bytes_done: bytes_done.load(Ordering::SeqCst),
                     bytes_total,
+                    bytes_session: 0,
                 });
                 return Ok(());
             }
@@ -466,6 +469,7 @@ pub async fn apply_update(
         total: 0,
         bytes_done: 0,
         bytes_total,
+        bytes_session: 0,
     });
 
     {
@@ -529,6 +533,7 @@ pub async fn apply_update(
             total: total_files,
             bytes_done: bytes_done.load(Ordering::SeqCst),
             bytes_total,
+            bytes_session: 0,
         });
     }
 
@@ -557,6 +562,7 @@ pub async fn apply_update(
                 total: total_del,
                 bytes_done: bytes_done.load(Ordering::SeqCst),
                 bytes_total,
+                bytes_session: 0,
             });
         }
     }

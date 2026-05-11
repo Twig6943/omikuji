@@ -9,7 +9,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use super::api;
 use super::sophon;
 use super::{HoyoEdition, VoiceLocale};
 
@@ -161,115 +160,79 @@ impl DownloadSource for HoyoSource {
         let voice_str = app_parts.get(2).unwrap_or(&"");
         let voice_locales = parse_voice_locales(voice_str);
 
-        let packages = api::fetch_packages(&parsed.biz_id, parsed.edition).await?;
+        let branches = sophon::api::fetch_game_branches(parsed.edition).await?;
+        let branch = branches
+            .find_for(&parsed.biz_id)
+            .ok_or_else(|| anyhow!("game branch not found for biz_id {}", parsed.biz_id))?;
+        let main = branch
+            .main
+            .as_ref()
+            .ok_or_else(|| anyhow!("no main package info for {}", parsed.display_name))?;
+        let target_version = main.tag.clone();
 
-        let game_files = &packages.game_packages;
-        let audio_files: Vec<&api::PackageFile> = packages
-            .audio_packages
-            .iter()
-            .filter(|a| voice_locales.contains(&a.locale))
-            .map(|a| &a.file)
-            .collect();
+        let build = sophon::api::fetch_build(parsed.edition, main).await?;
 
-        if game_files.is_empty() {
-            return Err(anyhow!("no download packages found for {} {}", parsed.display_name, parsed.edition.display_name()));
+        let game_entry = build
+            .get_for("game")
+            .ok_or_else(|| anyhow!("no 'game' category in sophon build"))?
+            .clone();
+        let mut entries = vec![game_entry];
+        for locale in &voice_locales {
+            if let Some(audio_entry) = build.get_for(locale.api_name()) {
+                entries.push(audio_entry.clone());
+            }
         }
 
-        let total_bytes: u64 = game_files.iter().map(|f| f.size).sum::<u64>()
-            + audio_files.iter().map(|f| f.size).sum::<u64>();
-        let mut downloaded_so_far: u64 = 0;
+        std::fs::create_dir_all(&entry.install_path)?;
 
-        let safe_id = entry.app_id.replace(':', "-");
-        let temp_dir = match entry.temp_dir.clone() {
-            Some(p) => p.join(format!(".omikuji-dl-{}", safe_id)),
-            None => entry
-                .install_path
-                .parent()
-                .unwrap_or(&entry.install_path)
-                .join(format!(".omikuji-dl-{}", safe_id)),
-        };
-        let _ = std::fs::create_dir_all(&temp_dir);
+        let id = entry.id.clone();
+        let total_bytes_arc = Arc::new(AtomicU64::new(0));
+        let total_bytes_arc_cb = total_bytes_arc.clone();
+        let id_cb = id.clone();
+        let start = std::time::Instant::now();
 
-        let mut first_segment: Option<std::path::PathBuf> = None;
-        for file in game_files {
-            if check_control(&entry.id) != ControlSignal::None {
-                return Ok(());
-            }
+        set_status(&entry.id, DownloadStatus::Downloading);
 
-            let filename = url_filename(&file.url);
-            let temp_path = temp_dir.join(&filename);
-            if first_segment.is_none() {
-                first_segment = Some(temp_path.clone());
-            }
+        let on_progress: sophon::patcher::ProgressFn = Arc::new(move |rep| {
+            let (done, total) = if rep.bytes_total > 0 {
+                (rep.bytes_done, rep.bytes_total)
+            } else {
+                (rep.current, rep.total.max(1))
+            };
+            total_bytes_arc_cb.store(total, Ordering::SeqCst);
+            let pct = if total > 0 { (done as f64 / total as f64) * 100.0 } else { 0.0 };
+            let elapsed = start.elapsed().as_secs_f64().max(0.001);
+            let bps_basis = if rep.bytes_session > 0 { rep.bytes_session } else { done };
+            let bps = (bps_basis as f64 / elapsed) as u64;
+            report_progress(&id_cb, pct, done, total, bps);
+        });
 
-            eprintln!("[hoyo] downloading game segment: {} ({})", filename, format_bytes(file.size));
-            download_file(&file.url, &temp_path, &entry.id, downloaded_so_far, total_bytes).await?;
+        let id_cancel = id.clone();
+        let is_cancelled: sophon::patcher::CancelFn = Arc::new(move || {
+            !matches!(check_control(&id_cancel), ControlSignal::None)
+        });
 
-            downloaded_so_far += file.size;
-        }
+        sophon::installer::apply_install(
+            &entries,
+            entry.install_path.clone(),
+            on_progress,
+            is_cancelled,
+        )
+        .await?;
 
         if check_control(&entry.id) != ControlSignal::None {
             return Ok(());
         }
 
-        // extract from first segment; 7z finds .002, .003 etc autoatically
-        if let Some(first) = &first_segment {
-            eprintln!("[hoyo] extracting game to {}", entry.install_path.display());
-            crate::notifications::info(&entry.display_name, "Extracting game files...");
-            set_status(&entry.id, DownloadStatus::Extracting);
-            extract_archive(first, &entry.install_path, Some(&entry.id))?;
-
-            for file in game_files {
-                let _ = std::fs::remove_file(temp_dir.join(url_filename(&file.url)));
-            }
-        }
-
-        for file in &audio_files {
-            if check_control(&entry.id) != ControlSignal::None {
-                return Ok(());
-            }
-
-            let filename = url_filename(&file.url);
-            let temp_path = temp_dir.join(&filename);
-
-            eprintln!("[hoyo] downloading voice pack: {} ({})", filename, format_bytes(file.size));
-            download_file(&file.url, &temp_path, &entry.id, downloaded_so_far, total_bytes).await?;
-
-            if check_control(&entry.id) != ControlSignal::None {
-                return Ok(());
-            }
-
-            let actual_size = std::fs::metadata(&temp_path).map(|m| m.len()).unwrap_or(0);
-            eprintln!("[hoyo] voice pack downloaded: {} (expected {}, got {})", filename, format_bytes(file.size), format_bytes(actual_size));
-
-            eprintln!("[hoyo] extracting voice pack: {}", filename);
-            crate::notifications::info(&entry.display_name, "Extracting voice pack...");
-            set_status(&entry.id, DownloadStatus::Extracting);
-            extract_archive(&temp_path, &entry.install_path, Some(&entry.id))?;
-            let _ = std::fs::remove_file(&temp_path);
-
-            downloaded_so_far += file.size;
-        }
-
-        if temp_dir.exists() {
-            eprintln!("[hoyo] cleaning up temp dir: {}", temp_dir.display());
-            if let Ok(entries) = std::fs::read_dir(&temp_dir) {
-                for entry in entries.flatten() {
-                    let p = entry.path();
-                    if let Err(e) = std::fs::remove_file(&p) {
-                        eprintln!("[hoyo] couldn't remove {}: {}", p.display(), e);
-                    }
-                }
-            }
-            if let Err(e) = std::fs::remove_dir_all(&temp_dir) {
-                eprintln!("[hoyo] couldn't remove temp dir {}: {}", temp_dir.display(), e);
-            }
-        }
-
-        super::set_installed_version(&parsed.game_slug, parsed.edition, &packages.version);
-        report_progress(&entry.id, 100.0, total_bytes, total_bytes, 0);
-
-        eprintln!("[hoyo] installed {} {} v{}", parsed.display_name, parsed.edition.display_name(), packages.version);
+        super::set_installed_version(&parsed.game_slug, parsed.edition, &target_version);
+        let total = total_bytes_arc.load(Ordering::SeqCst);
+        report_progress(&entry.id, 100.0, total, total, 0);
+        eprintln!(
+            "[hoyo] installed {} {} v{}",
+            parsed.display_name,
+            parsed.edition.display_name(),
+            target_version
+        );
         Ok(())
     }
 }
@@ -718,10 +681,6 @@ fn parse_voice_locales(s: &str) -> Vec<VoiceLocale> {
                 .copied()
         })
         .collect()
-}
-
-fn url_filename(url: &str) -> String {
-    url.rsplit('/').next().unwrap_or("download.7z").to_string()
 }
 
 fn format_bytes(bytes: u64) -> String {

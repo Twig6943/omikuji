@@ -21,25 +21,38 @@ pub async fn fetch_install_size(
     edition: HoyoEdition,
     voices: &[VoiceLocale],
 ) -> Result<InstallSize> {
-    let info = fetch_packages(biz_id, edition).await?;
+    let branches = super::sophon::api::fetch_game_branches(edition).await?;
+    let branch = branches
+        .find_for(biz_id)
+        .ok_or_else(|| anyhow!("game branch not found for biz_id {}", biz_id))?;
+    let main = branch
+        .main
+        .as_ref()
+        .ok_or_else(|| anyhow!("no main package info"))?;
+    let build = super::sophon::api::fetch_build(edition, main).await?;
 
     let mut download = 0u64;
     let mut peak = 0u64;
 
-    for pkg in &info.game_packages {
-        download += pkg.size;
-        peak += pkg.decompressed_size;
+    let mut accumulate = |entry: &super::sophon::api::SophonManifestEntry| {
+        if let Some(s) = &entry.stats {
+            download += s.compressed_size.parse::<u64>().unwrap_or(0);
+            peak += s.uncompressed_size.parse::<u64>().unwrap_or(0);
+        }
+    };
+
+    if let Some(game) = build.get_for("game") {
+        accumulate(game);
     }
-    for audio in &info.audio_packages {
-        if voices.contains(&audio.locale) {
-            download += audio.file.size;
-            peak += audio.file.decompressed_size;
+    for locale in voices {
+        if let Some(audio) = build.get_for(locale.api_name()) {
+            accumulate(audio);
         }
     }
 
     Ok(InstallSize {
         download_bytes: download,
-        install_bytes: peak.saturating_sub(download),
+        install_bytes: peak.max(download),
     })
 }
 

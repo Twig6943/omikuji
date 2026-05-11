@@ -1,5 +1,6 @@
 
 pub mod api;
+pub mod installer;
 pub mod manifest;
 pub mod patcher;
 
@@ -36,6 +37,16 @@ pub fn game_branches_url(edition: HoyoEdition) -> String {
 pub fn patch_build_url(edition: HoyoEdition, pkg: &api::PackageInfo) -> String {
     format!(
         "{}/downloader/sophon_chunk/api/getPatchBuild?branch={}&password={}&package_id={}",
+        api_host(edition),
+        pkg.branch,
+        pkg.password,
+        pkg.package_id,
+    )
+}
+
+pub fn build_url(edition: HoyoEdition, pkg: &api::PackageInfo) -> String {
+    format!(
+        "{}/downloader/sophon_chunk/api/getBuild?branch={}&password={}&package_id={}",
         api_host(edition),
         pkg.branch,
         pkg.password,

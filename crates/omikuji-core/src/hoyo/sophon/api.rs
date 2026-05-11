@@ -67,6 +67,36 @@ impl SophonDiffs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SophonBuild {
+    #[serde(default)]
+    pub build_id: String,
+    #[serde(default)]
+    pub tag: String,
+    pub manifests: Vec<SophonManifestEntry>,
+}
+
+impl SophonBuild {
+    pub fn get_for(&self, matching_field: &str) -> Option<&SophonManifestEntry> {
+        self.manifests.iter().find(|m| m.matching_field == matching_field)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SophonManifestEntry {
+    #[serde(default)]
+    pub category_id: String,
+    #[serde(default)]
+    pub category_name: String,
+    #[serde(default)]
+    pub matching_field: String,
+    pub manifest: ManifestRef,
+    pub chunk_download: DownloadInfo,
+    pub manifest_download: DownloadInfo,
+    #[serde(default)]
+    pub stats: Option<ManifestStats>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SophonDiff {
     #[serde(default)]
     pub category_id: String,
@@ -160,4 +190,8 @@ pub async fn fetch_game_branches(edition: HoyoEdition) -> Result<GameBranches> {
 
 pub async fn fetch_patch_build(edition: HoyoEdition, pkg: &PackageInfo) -> Result<SophonDiffs> {
     post_json(&super::patch_build_url(edition, pkg)).await
+}
+
+pub async fn fetch_build(edition: HoyoEdition, pkg: &PackageInfo) -> Result<SophonBuild> {
+    get_json(&super::build_url(edition, pkg)).await
 }
