@@ -4,43 +4,35 @@ Disclaimer: This was written with arch in mind. So the package names might be di
 
 1. Install the dependencies;
 ```
-build-essential
-pkg-config
-cmake
-libudev-dev
-libfuse2
-wget
-protobuf-compiler
-rust
-cmake
-file
-libxkbcommon-dev
-libxkbcommon-x11-0
-fuse2
-libxcb-cursor-dev
-libcups2-dev
-libglib2.0-0
-libglib2.0-dev
-libproxy1v5
-libproxy-dev
-qt6-base-dev
-qt6-base-dev-tools
-qt6-tools-dev
-qt6-tools-dev-tools
-qt6-wayland
-qt6-wayland-dev
+sudo pacman -S pkg-config \
+cmake \
+systemd-libs \
+fuse2 \
+wget \
+protobuf \
+rust \
+cmake \
+libxkbcommon \
+xcb-util-cursor \
+libcups \
+glib2 \
+libproxy \
+qt6-base \
+qt6-tools \
+qt6-wayland \
+qt6-shadertools \
+libfbclient \
+mariadb \
+unixodbc \
+postgresql-libs \
+jxrlib
+
+// On some distros
 libqt6waylandclient6
 qml6-module-qtwayland-compositor
 libqt6core5compat6
 libqt6core5compat6-dev
 qt6-base-private-dev
-
-# these might not be required
-libfbclient
-mariadb
-unixodbc
-postgresql-libs
-jxrlib
 ```
 
 2. Add `/usr/lib/qt6/bin` to your `$PATH` if needed

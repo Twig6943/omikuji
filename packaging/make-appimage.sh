@@ -10,7 +10,7 @@ if [[ ! -e /usr/lib/qt6/bin/qsb ]]; then
 fi
 
 # Qt env vars
-export QMAKE=$(which qmake6)
+export QMAKE=/usr/lib/qt6/bin/qmake
 export QML_SOURCES_PATHS="$PWD/crates/omikuji/qml"
 
 export EXTRA_PLATFORM_PLUGINS=libqwayland.so
