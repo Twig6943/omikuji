@@ -1,0 +1,69 @@
+name: Flatpak
+
+on:
+  workflow_dispatch:
+
+jobs:
+  flatpak-extensions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y flatpak flatpak-builder git
+
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+          flatpak install -y flathub \
+            org.freedesktop.Sdk//${{ matrix.version }} \
+            org.freedesktop.Platform//${{ matrix.version }}
+
+      - name: Build
+        run: |
+          flatpak-builder --force-clean build-dir \
+            flatpak/io.github.reakjra.omikuji.yaml
+
+          flatpak build-bundle build-dir \
+            io.github.reakjra.omikuji.flatpak
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: lsfg-vk-layer-${{ matrix.version }}
+          path: "*.flatpak"
+
+  flatpak-ui:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Flatpak build dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y flatpak flatpak-builder git
+
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+          flatpak install -y flathub \
+            org.kde.Sdk//6.10 \
+            org.kde.Platform//6.10
+
+      - name: Build Flatpak UI
+        run: |
+          flatpak-builder --force-clean build-dir \
+            flatpak/io.github.reakjra.omikuji.yaml
+
+          flatpak build-bundle build-dir \
+            io.github.reakjra.omikuji.flatpak
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: flatpak
+          path: "*.flatpak"
