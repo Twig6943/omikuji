@@ -45,6 +45,7 @@ ehthumbs.db
 Thumbs.db
 
 [Bb]uild-dir/
+repo/
 
 tools/
 omikuji-appdir
