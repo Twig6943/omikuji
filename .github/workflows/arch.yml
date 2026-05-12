@@ -55,6 +55,9 @@ jobs:
           sudo -u builder sh <<'EOF'
           set -e
           cargo build --release -p omikuji
+
+          export APPIMAGE_EXTRACT_AND_RUN=1
+
           chmod +x ./packaging/make-appimage.sh
           ./packaging/make-appimage.sh
           EOF
