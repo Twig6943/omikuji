@@ -56,7 +56,6 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.4.0"
           modules: "qtshadertools qt5compat"
           cache: true
 
