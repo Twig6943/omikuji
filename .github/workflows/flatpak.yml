@@ -25,7 +25,7 @@ jobs:
             org.kde.Sdk//6.10 \
             org.kde.Platform//6.10 \
             org.winehq.Wine//stable-25.08 \
-            org.freedesktop.Sdk.Extension.rust-stable
+            org.freedesktop.Sdk.Extension.rust-stable//25.08
 
       - name: Build Flatpak
         run: |
