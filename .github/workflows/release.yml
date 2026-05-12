@@ -23,7 +23,7 @@ permissions:
 jobs:
   appimage:
     name: Build AppImage
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source
@@ -77,15 +77,10 @@ jobs:
             target
           key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
 
-      - name: Locate qsb
+      - name: Symlink qsb to /usr/lib/qt6/bin (build.rs fallback search path)
         run: |
-          QSB_PATH="$(command -v qsb || true)"
-
-          if [ -z "$QSB_PATH" ]; then
-            echo "warning: qsb not found, continuing anyway"
-          else
-            echo "QSB_PATH=$QSB_PATH" >> "$GITHUB_ENV"
-          fi
+          sudo mkdir -p /usr/lib/qt6/bin
+          sudo ln -sf "$QT_ROOT_DIR/bin/qsb" /usr/lib/qt6/bin/qsb
 
       - name: Download linuxdeploy + qt plugin
         run: |
