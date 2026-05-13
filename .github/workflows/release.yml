@@ -33,31 +33,7 @@ jobs:
           pacman -Syu --noconfirm archlinux-keyring
           pacman -Syu --noconfirm pkg-config \
           base-devel \
-          sudo \
-          cmake \
-          systemd-libs \
-          fuse2 \
-          wget \
-          protobuf \
-          rust \
-          cmake \
-          libxkbcommon \
-          xcb-util-cursor \
-          libcups \
-          glib2 \
-          libproxy \
-          qt6-base \
-          qt6-tools \
-          qt6-wayland \
-          qt6-shadertools \
-          qt6-declarative \
-          qt6-5compat \
-          qt6-svg \
-          libfbclient \
-          mariadb \
-          unixodbc \
-          postgresql-libs \
-          jxrlib
+          sudo
 
       - name: Create build user
         run: |
@@ -74,12 +50,11 @@ jobs:
         run: |
           sudo -u builder sh <<'EOF'
           set -e
-          cargo build --release -p omikuji
-
-          export APPIMAGE_EXTRACT_AND_RUN=1
-
-          chmod +x ./packaging/make-appimage.sh
-          ./packaging/make-appimage.sh
+          cd packaging
+          makepkg -fs
+          pacman -U ./*.pkg.tar.zst
+          chmod +x ./make-appimage.sh
+          ./make-appimage.sh
           EOF
 
       - name: Upload build artifacts
