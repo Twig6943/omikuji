@@ -2,7 +2,7 @@
 Type=Application
 Name=Omikuji
 GenericName=Game Launcher
-Exec=omikuji
+Exec=omikuji %U
 Icon=io.github.reakjra.omikuji
 StartupWMClass=omikuji
 Categories=Game;PackageManager;
