@@ -34,7 +34,10 @@ jobs:
           pacman -Syu --noconfirm pkg-config \
           base-devel \
           sudo \
-          wget
+          wget \
+          qt6ct \
+          kvantum \
+          lxqt-qtplugin
 
       - name: Create build user
         run: |
