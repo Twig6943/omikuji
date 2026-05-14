@@ -7,11 +7,10 @@ Disclaimer: This was written with arch in mind. So the package names might be di
 sudo pacman -S pkg-config \
 cmake \
 systemd-libs \
-fuse2 \
 wget \
 protobuf \
 rust \
-cmake \
+cargo \
 libxkbcommon \
 xcb-util-cursor \
 libcups \
@@ -24,11 +23,11 @@ qt6-shadertools \
 qt6-declarative \
 qt6-5compat \
 qt6-svg \
-libfbclient \
-mariadb \
-unixodbc \
-postgresql-libs \
-jxrlib
+qt6-base \
+qt6-declarative \
+qt6-5compat \
+qt6-svg \
+qt6-shadertools
 
 // On some distros
 libqt6waylandclient6

@@ -55,12 +55,13 @@ jobs:
         run: |
           sudo -u builder sh <<'EOF'
           set -e
-          cd packaging
+          cd packaging/git
           makepkg -fs --noconfirm
           EOF
           ls -lh
-          cd packaging/
+          cd packaging/git
           pacman --noconfirm -U ./*.pkg.tar.zst
+          cd ..
           chmod +x ./make-appimage.sh
           ./make-appimage.sh
 

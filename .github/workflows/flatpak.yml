@@ -23,8 +23,8 @@ jobs:
 
       - name: Build Flatpak
         run: |
-          mkdir -p flatpak/build-dir"
-          mkdir -p flatpak/repo"
+          mkdir -p flatpak/build-dir
+          mkdir -p flatpak/repo
           flatpak-builder --user \
             --force-clean \
             --repo=flatpak/repo \
