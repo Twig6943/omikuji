@@ -1,6 +1,9 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       release_tag:
@@ -71,11 +74,11 @@ jobs:
           archive: false
 
       - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != ''
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          name: ${{ github.event.inputs.release_tag }}
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          name: ${{ github.event.inputs.release_tag || github.ref_name }}
           files: "packaging/dist/*.AppImage"
           generate_release_notes: true
           draft: false

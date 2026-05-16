@@ -22,14 +22,9 @@ qt6-wayland \
 qt6-shadertools \
 qt6-declarative \
 qt6-5compat \
-qt6-svg \
-qt6-base \
-qt6-declarative \
-qt6-5compat \
-qt6-svg \
-qt6-shadertools
+qt6-svg
 
-// On some distros
+# On some distros
 libqt6waylandclient6
 qml6-module-qtwayland-compositor
 libqt6core5compat6
